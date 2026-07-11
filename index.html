@@ -22,7 +22,11 @@
               <small>Suzhou High School International Division</small>
             </span>
           </a>
-          <img class="ib-logo" src="./ib-programme.jpg" alt="IB Diploma Programme" />
+          <div class="top-actions">
+            <div id="userStatus" class="user-status">未登录 / Not signed in</div>
+            <button id="logoutButton" class="quiet-button is-hidden" type="button">退出 / Logout</button>
+            <img class="ib-logo" src="./ib-programme.jpg" alt="IB Diploma Programme" />
+          </div>
         </header>
 
         <div class="hero-grid">
@@ -47,6 +51,32 @@
                 <span>在线练习与解析</span>
               </div>
             </div>
+            <section class="auth-center" aria-label="账号登录 / Account login">
+              <div>
+                <span class="section-label">Account Center</span>
+                <h2 id="authHeading">统一登录中心</h2>
+                <p id="authMessage">登录后进入 AMC/BMO 或 NEC 时会自动共享同一个 Supabase 会话。游客模式仍可进入平台，但记录只保存在本机。</p>
+              </div>
+              <div id="guestActions" class="auth-actions">
+                <button id="showLogin" type="button">登录 / Login</button>
+                <button id="showSignup" type="button">注册 / Sign up</button>
+                <button id="continueGuest" type="button">游客继续 / Continue as Guest</button>
+              </div>
+              <form id="authForm" class="auth-form is-hidden">
+                <label>
+                  <span>邮箱 / Email</span>
+                  <input id="authEmail" type="email" autocomplete="email" />
+                </label>
+                <label>
+                  <span>密码 / Password</span>
+                  <input id="authPassword" type="password" autocomplete="current-password" />
+                </label>
+                <div class="auth-actions">
+                  <button id="authSubmit" type="submit">登录 / Login</button>
+                  <button id="authCancel" type="button">取消 / Cancel</button>
+                </div>
+              </form>
+            </section>
           </div>
 
           <nav class="platform-cards" aria-label="竞赛入口 / Competition entries">
@@ -65,7 +95,143 @@
               <span class="card-text">NEC 经济学主题题库、答案与分阶段解析。</span>
               <span class="card-action">进入 NEC 平台</span>
             </a>
+
+            <button id="adminCard" class="platform-card admin-card is-hidden" type="button">
+              <span class="card-index">03</span>
+              <span class="card-kicker">Administration</span>
+              <strong>Admin Dashboard</strong>
+              <span class="card-text">查看 AMC/BMO 与 NEC 的综合学生记录、题目作答和导出数据。</span>
+              <span class="card-action">打开管理员面板</span>
+            </button>
           </nav>
+        </div>
+      </section>
+
+      <section id="memberAssignments" class="member-assignments is-hidden" aria-label="已布置 AMC 题目 / Assigned AMC problems">
+        <div class="section-head">
+          <div>
+            <span class="section-label">Math Club</span>
+            <h2>已布置 AMC 题目</h2>
+            <p>完成后可从题目卡片进入 AMC 练习平台作答。</p>
+          </div>
+          <a class="quiet-button button-link" href="https://samuelq800.github.io/amc-practice-platform/">打开 AMC 练习 / Open AMC</a>
+        </div>
+        <div id="memberAssignmentList" class="assignment-list"></div>
+      </section>
+
+      <section id="adminDashboard" class="admin-dashboard is-hidden" aria-label="管理员面板 / Admin dashboard">
+        <div class="section-head">
+          <div>
+            <span class="section-label">Admin Dashboard</span>
+            <h2>综合竞赛数据</h2>
+          </div>
+          <div class="auth-actions">
+            <button id="refreshAdmin" type="button">刷新 / Refresh</button>
+            <button id="exportCsv" type="button">导出 CSV / Export CSV</button>
+          </div>
+        </div>
+
+        <div class="admin-summary">
+          <div><strong id="totalStudents">0</strong><span>学生 / Students</span></div>
+          <div><strong id="totalAttempts">0</strong><span>总作答 / Attempts</span></div>
+          <div><strong id="amcBmoAttempts">0</strong><span>AMC/BMO</span></div>
+          <div><strong id="necAttempts">0</strong><span>NEC</span></div>
+          <div><strong id="averageAccuracy">0%</strong><span>平均正确率 / Accuracy</span></div>
+          <div><strong id="activeUsers">0</strong><span>7日活跃 / Active 7d</span></div>
+        </div>
+
+        <div class="assignment-admin-grid">
+          <section class="admin-panel assignment-form-panel">
+            <div class="section-head compact">
+              <div>
+                <span class="section-label">AMC Assignment</span>
+                <strong>布置 AMC 题目</strong>
+              </div>
+              <span id="assignmentDraftCount" class="assignment-count">0 题已选择</span>
+            </div>
+            <div class="assignment-form">
+              <label class="span-two"><span>任务标题 / Title</span><input id="assignmentTitle" type="text" maxlength="100" placeholder="例如：本周 AMC 数论练习 / This week's number theory" /></label>
+              <label><span>截止日期 / Due date</span><input id="assignmentDueAt" type="date" /></label>
+              <label><span>年份 / Year</span><select id="assignmentYear"></select></label>
+              <label><span>考试 / Contest</span><select id="assignmentLevel"></select></label>
+              <label><span>卷别 / Form</span><select id="assignmentForm"></select></label>
+              <label><span>题号 / Problem</span><select id="assignmentNumber"></select></label>
+              <button id="addAssignmentProblem" type="button" class="quiet-button">加入题目 / Add problem</button>
+              <label class="span-two"><span>说明 / Instructions</span><textarea id="assignmentInstructions" rows="3" maxlength="800" placeholder="给成员的练习要求或提示 / Optional instructions"></textarea></label>
+            </div>
+            <div id="assignmentDraftProblems" class="assignment-problem-pills"></div>
+            <div class="assignment-actions">
+              <button id="createAssignment" type="button">发布给 Math Club / Publish</button>
+              <p id="assignmentMessage" class="assignment-message" aria-live="polite"></p>
+            </div>
+          </section>
+          <section class="admin-panel">
+            <div class="section-head compact">
+              <span class="section-label">Published</span>
+              <strong id="assignmentTableTitle">0 assignments</strong>
+            </div>
+            <div id="adminAssignmentList" class="assignment-list compact-list"></div>
+          </section>
+        </div>
+
+        <div class="admin-filters">
+          <label><span>竞赛 / Contest</span><select id="contestFilter"></select></label>
+          <label><span>学生 / Student</span><select id="studentFilter"></select></label>
+          <label><span>知识点 / Topic</span><select id="topicFilter"></select></label>
+          <label><span>年份 / Year</span><select id="yearFilter"></select></label>
+          <label><span>开始 / From</span><input id="dateFrom" type="date" /></label>
+          <label><span>结束 / To</span><input id="dateTo" type="date" /></label>
+        </div>
+
+        <div class="admin-grid">
+          <section class="admin-panel">
+            <div class="section-head compact">
+              <span class="section-label">Students</span>
+              <strong id="studentTableTitle">0 students</strong>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>姓名 / Name</th>
+                    <th>邮箱 / Email</th>
+                    <th>身份 / Role</th>
+                    <th>总作答 / Total</th>
+                    <th>AMC/BMO</th>
+                    <th>NEC</th>
+                    <th>正确 / Correct</th>
+                    <th>正确率 / Accuracy</th>
+                    <th>最近活跃 / Last Active</th>
+                  </tr>
+                </thead>
+                <tbody id="studentRows"></tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="admin-panel">
+            <div class="section-head compact">
+              <span class="section-label">Attempts</span>
+              <strong id="attemptTableTitle">0 attempts</strong>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>学生 / Student</th>
+                    <th>竞赛 / Contest</th>
+                    <th>题目 / Problem</th>
+                    <th>知识点 / Topic</th>
+                    <th>选择 / Selected</th>
+                    <th>正答 / Correct</th>
+                    <th>结果 / Result</th>
+                    <th>时间 / Submitted</th>
+                  </tr>
+                </thead>
+                <tbody id="attemptRows"></tbody>
+              </table>
+            </div>
+          </section>
         </div>
       </section>
 
@@ -79,5 +245,7 @@
         </p>
       </section>
     </main>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="./app.js?v=20260708-shared-auth1"></script>
   </body>
 </html>
