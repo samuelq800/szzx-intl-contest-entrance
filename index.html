@@ -107,6 +107,18 @@
         </div>
       </section>
 
+      <section id="memberAssignments" class="member-assignments is-hidden" aria-label="已布置 AMC 题目 / Assigned AMC problems">
+        <div class="section-head">
+          <div>
+            <span class="section-label">Math Club</span>
+            <h2>已布置 AMC 题目</h2>
+            <p>完成后可从题目卡片进入 AMC 练习平台作答。</p>
+          </div>
+          <a class="quiet-button button-link" href="https://samuelq800.github.io/amc-practice-platform/">打开 AMC 练习 / Open AMC</a>
+        </div>
+        <div id="memberAssignmentList" class="assignment-list"></div>
+      </section>
+
       <section id="adminDashboard" class="admin-dashboard is-hidden" aria-label="管理员面板 / Admin dashboard">
         <div class="section-head">
           <div>
@@ -126,6 +138,40 @@
           <div><strong id="necAttempts">0</strong><span>NEC</span></div>
           <div><strong id="averageAccuracy">0%</strong><span>平均正确率 / Accuracy</span></div>
           <div><strong id="activeUsers">0</strong><span>7日活跃 / Active 7d</span></div>
+        </div>
+
+        <div class="assignment-admin-grid">
+          <section class="admin-panel assignment-form-panel">
+            <div class="section-head compact">
+              <div>
+                <span class="section-label">AMC Assignment</span>
+                <strong>布置 AMC 题目</strong>
+              </div>
+              <span id="assignmentDraftCount" class="assignment-count">0 题已选择</span>
+            </div>
+            <div class="assignment-form">
+              <label class="span-two"><span>任务标题 / Title</span><input id="assignmentTitle" type="text" maxlength="100" placeholder="例如：本周 AMC 数论练习 / This week's number theory" /></label>
+              <label><span>截止日期 / Due date</span><input id="assignmentDueAt" type="date" /></label>
+              <label><span>年份 / Year</span><select id="assignmentYear"></select></label>
+              <label><span>考试 / Contest</span><select id="assignmentLevel"></select></label>
+              <label><span>卷别 / Form</span><select id="assignmentForm"></select></label>
+              <label><span>题号 / Problem</span><select id="assignmentNumber"></select></label>
+              <button id="addAssignmentProblem" type="button" class="quiet-button">加入题目 / Add problem</button>
+              <label class="span-two"><span>说明 / Instructions</span><textarea id="assignmentInstructions" rows="3" maxlength="800" placeholder="给成员的练习要求或提示 / Optional instructions"></textarea></label>
+            </div>
+            <div id="assignmentDraftProblems" class="assignment-problem-pills"></div>
+            <div class="assignment-actions">
+              <button id="createAssignment" type="button">发布给 Math Club / Publish</button>
+              <p id="assignmentMessage" class="assignment-message" aria-live="polite"></p>
+            </div>
+          </section>
+          <section class="admin-panel">
+            <div class="section-head compact">
+              <span class="section-label">Published</span>
+              <strong id="assignmentTableTitle">0 assignments</strong>
+            </div>
+            <div id="adminAssignmentList" class="assignment-list compact-list"></div>
+          </section>
         </div>
 
         <div class="admin-filters">
@@ -149,6 +195,7 @@
                   <tr>
                     <th>姓名 / Name</th>
                     <th>邮箱 / Email</th>
+                    <th>身份 / Role</th>
                     <th>总作答 / Total</th>
                     <th>AMC/BMO</th>
                     <th>NEC</th>

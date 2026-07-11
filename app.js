@@ -20,6 +20,8 @@ const els = {
   authSubmit: document.querySelector("#authSubmit"),
   authCancel: document.querySelector("#authCancel"),
   adminCard: document.querySelector("#adminCard"),
+  memberAssignments: document.querySelector("#memberAssignments"),
+  memberAssignmentList: document.querySelector("#memberAssignmentList"),
   adminDashboard: document.querySelector("#adminDashboard"),
   refreshAdmin: document.querySelector("#refreshAdmin"),
   exportCsv: document.querySelector("#exportCsv"),
@@ -39,6 +41,20 @@ const els = {
   attemptTableTitle: document.querySelector("#attemptTableTitle"),
   studentRows: document.querySelector("#studentRows"),
   attemptRows: document.querySelector("#attemptRows"),
+  assignmentTitle: document.querySelector("#assignmentTitle"),
+  assignmentDueAt: document.querySelector("#assignmentDueAt"),
+  assignmentYear: document.querySelector("#assignmentYear"),
+  assignmentLevel: document.querySelector("#assignmentLevel"),
+  assignmentForm: document.querySelector("#assignmentForm"),
+  assignmentNumber: document.querySelector("#assignmentNumber"),
+  addAssignmentProblem: document.querySelector("#addAssignmentProblem"),
+  assignmentDraftCount: document.querySelector("#assignmentDraftCount"),
+  assignmentDraftProblems: document.querySelector("#assignmentDraftProblems"),
+  assignmentInstructions: document.querySelector("#assignmentInstructions"),
+  createAssignment: document.querySelector("#createAssignment"),
+  assignmentMessage: document.querySelector("#assignmentMessage"),
+  assignmentTableTitle: document.querySelector("#assignmentTableTitle"),
+  adminAssignmentList: document.querySelector("#adminAssignmentList"),
 };
 
 const state = {
@@ -52,7 +68,9 @@ const state = {
   user: null,
   profile: null,
   authAction: "login",
-  adminData: { profiles: [], attempts: [] },
+  adminData: { profiles: [], attempts: [], assignments: [] },
+  assignments: [],
+  assignmentDraft: [],
 };
 
 function option(select, value, label) {
@@ -84,6 +102,10 @@ function dateTime(value) {
 
 function isAdmin() {
   return state.profile?.role === "admin";
+}
+
+function isMathClubMember() {
+  return state.profile?.role === "mathclubmembers";
 }
 
 function displayName(profile = state.profile) {
@@ -119,7 +141,9 @@ function renderAuth() {
   els.logoutButton.classList.toggle("is-hidden", !signedIn);
   els.guestActions.classList.toggle("is-hidden", signedIn);
   els.adminCard.classList.toggle("is-hidden", !isAdmin());
+  els.memberAssignments.classList.toggle("is-hidden", !isMathClubMember());
   if (!isAdmin()) els.adminDashboard.classList.add("is-hidden");
+  if (isMathClubMember()) loadMemberAssignments();
 }
 
 function openAuthForm(action) {
@@ -167,12 +191,196 @@ async function logout() {
   await state.supabase.auth.signOut();
   state.user = null;
   state.profile = null;
-  state.adminData = { profiles: [], attempts: [] };
+  state.adminData = { profiles: [], attempts: [], assignments: [] };
+  state.assignments = [];
   renderAuth();
 }
 
 function profileFor(userId) {
   return state.adminData.profiles.find((profile) => profile.id === userId) || {};
+}
+
+function escapeHtml(value) {
+  return String(value ?? "").replace(/[&<>"']/g, (char) => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;",
+  })[char]);
+}
+
+function assignmentProblemLabel(problemId) {
+  return String(problemId || "").replace(/_(AMC)_(10|12)([AB])_(\d+)$/, " $1 $2$3 #$4").replaceAll("_", " ");
+}
+
+function assignmentProblemUrl(problemId) {
+  return `https://samuelq800.github.io/amc-practice-platform/?problem=${encodeURIComponent(problemId)}`;
+}
+
+function assignmentDate(value) {
+  return value ? `截止 / Due ${new Intl.DateTimeFormat("zh-CN", { month: "2-digit", day: "2-digit" }).format(new Date(value))}` : "无截止日期 / No due date";
+}
+
+function renderAssignmentItem(assignment, options = {}) {
+  const item = document.createElement("article");
+  item.className = "assignment-item";
+  const head = document.createElement("div");
+  head.className = "assignment-item-head";
+  const title = document.createElement("h3");
+  title.textContent = assignment.title || "AMC 练习任务 / AMC Assignment";
+  const meta = document.createElement("span");
+  meta.className = "assignment-meta";
+  meta.textContent = assignmentDate(assignment.due_at);
+  head.append(title, meta);
+  item.append(head);
+  if (assignment.instructions) {
+    const note = document.createElement("p");
+    note.textContent = assignment.instructions;
+    item.append(note);
+  }
+  const problems = document.createElement("div");
+  problems.className = "assignment-problems";
+  for (const problemId of assignment.problem_ids || []) {
+    const link = document.createElement("a");
+    link.href = assignmentProblemUrl(problemId);
+    link.textContent = assignmentProblemLabel(problemId);
+    problems.append(link);
+  }
+  item.append(problems);
+  if (options.showDelete) {
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.className = "quiet-button";
+    remove.textContent = "撤回任务 / Remove";
+    remove.addEventListener("click", () => deleteAssignment(assignment.id));
+    item.append(remove);
+  }
+  return item;
+}
+
+function renderMemberAssignments() {
+  els.memberAssignmentList.innerHTML = "";
+  if (!state.assignments.length) {
+    const empty = document.createElement("p");
+    empty.textContent = "目前没有布置的 AMC 题目 / No AMC assignments yet.";
+    els.memberAssignmentList.append(empty);
+    return;
+  }
+  state.assignments.forEach((assignment) => els.memberAssignmentList.append(renderAssignmentItem(assignment)));
+}
+
+async function loadMemberAssignments() {
+  if (!isMathClubMember()) return;
+  const { data, error } = await state.supabase
+    .from("amc_assignments")
+    .select("id,title,instructions,problem_ids,due_at,created_at")
+    .eq("target_role", "mathclubmembers")
+    .order("created_at", { ascending: false });
+  if (error) {
+    els.memberAssignmentList.innerHTML = "";
+    const message = document.createElement("p");
+    message.textContent = `任务暂时无法读取 / Assignments unavailable: ${error.message}`;
+    els.memberAssignmentList.append(message);
+    return;
+  }
+  state.assignments = data || [];
+  renderMemberAssignments();
+}
+
+function renderAssignmentDraft() {
+  els.assignmentDraftProblems.innerHTML = "";
+  els.assignmentDraftCount.textContent = `${state.assignmentDraft.length} 题已选择 / selected`;
+  state.assignmentDraft.forEach((problemId) => {
+    const pill = document.createElement("span");
+    pill.className = "assignment-pill";
+    pill.append(document.createTextNode(assignmentProblemLabel(problemId)));
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.textContent = "×";
+    remove.title = "移除 / Remove";
+    remove.addEventListener("click", () => {
+      state.assignmentDraft = state.assignmentDraft.filter((id) => id !== problemId);
+      renderAssignmentDraft();
+    });
+    pill.append(remove);
+    els.assignmentDraftProblems.append(pill);
+  });
+}
+
+function currentAssignmentProblemId() {
+  return `${els.assignmentYear.value}_AMC_${els.assignmentLevel.value}${els.assignmentForm.value}_${els.assignmentNumber.value}`;
+}
+
+function setupAssignmentForm() {
+  const currentYear = new Date().getFullYear();
+  fillSelect(els.assignmentYear, Array.from({ length: currentYear - 2009 }, (_, index) => [String(currentYear - index), String(currentYear - index)]), "选择年份 / Year");
+  els.assignmentYear.value = "2025";
+  els.assignmentLevel.innerHTML = "";
+  option(els.assignmentLevel, "10", "AMC 10");
+  option(els.assignmentLevel, "12", "AMC 12");
+  els.assignmentForm.innerHTML = "";
+  option(els.assignmentForm, "A", "A 卷 / Form A");
+  option(els.assignmentForm, "B", "B 卷 / Form B");
+  els.assignmentNumber.innerHTML = "";
+  for (let number = 1; number <= 25; number += 1) option(els.assignmentNumber, String(number), `第 ${number} 题 / #${number}`);
+  renderAssignmentDraft();
+}
+
+function addAssignmentProblem() {
+  const problemId = currentAssignmentProblemId();
+  if (!state.assignmentDraft.includes(problemId)) state.assignmentDraft.push(problemId);
+  els.assignmentMessage.textContent = "";
+  renderAssignmentDraft();
+}
+
+async function createAssignment() {
+  if (!isAdmin()) return;
+  if (!state.assignmentDraft.length) {
+    els.assignmentMessage.textContent = "请至少加入一道 AMC 题目 / Add at least one AMC problem.";
+    return;
+  }
+  const title = els.assignmentTitle.value.trim() || `AMC 练习 · ${new Date().toLocaleDateString("zh-CN")}`;
+  els.createAssignment.disabled = true;
+  els.assignmentMessage.textContent = "正在发布任务... / Publishing assignment...";
+  const { error } = await state.supabase.from("amc_assignments").insert({
+    created_by: state.user.id,
+    target_role: "mathclubmembers",
+    title,
+    instructions: els.assignmentInstructions.value.trim() || null,
+    problem_ids: state.assignmentDraft,
+    due_at: els.assignmentDueAt.value ? new Date(`${els.assignmentDueAt.value}T23:59:59`).toISOString() : null,
+  });
+  els.createAssignment.disabled = false;
+  if (error) {
+    els.assignmentMessage.textContent = `发布失败 / Failed to publish: ${error.message}`;
+    return;
+  }
+  state.assignmentDraft = [];
+  els.assignmentTitle.value = "";
+  els.assignmentInstructions.value = "";
+  els.assignmentDueAt.value = "";
+  els.assignmentMessage.textContent = "已发布给 Math Club 成员 / Published to Math Club members.";
+  renderAssignmentDraft();
+  loadAdmin();
+}
+
+async function deleteAssignment(assignmentId) {
+  if (!isAdmin() || !assignmentId) return;
+  const { error } = await state.supabase.from("amc_assignments").delete().eq("id", assignmentId);
+  if (error) {
+    els.assignmentMessage.textContent = `撤回失败 / Failed to remove: ${error.message}`;
+    return;
+  }
+  els.assignmentMessage.textContent = "任务已撤回 / Assignment removed.";
+  loadAdmin();
+}
+
+async function updateProfileRole(userId, role) {
+  if (!isAdmin()) return;
+  const { error } = await state.supabase.from("profiles").update({ role }).eq("id", userId);
+  if (error) {
+    els.assignmentMessage.textContent = `身份更新失败 / Role update failed: ${error.message}`;
+    return;
+  }
+  els.assignmentMessage.textContent = "身份已更新 / Role updated.";
+  loadAdmin();
 }
 
 function filteredAttempts() {
@@ -239,6 +447,12 @@ function renderAdmin() {
     <tr>
       <td>${displayName(row.profile)}</td>
       <td>${row.profile.email || "-"}</td>
+      <td>${row.profile.role === "admin" ? "admin" : `
+        <select class="role-select" data-user-id="${row.profile.id}" aria-label="${displayName(row.profile)} 的身份">
+          <option value="student" ${row.profile.role !== "mathclubmembers" ? "selected" : ""}>student</option>
+          <option value="mathclubmembers" ${row.profile.role === "mathclubmembers" ? "selected" : ""}>mathclubmembers</option>
+        </select>
+      `}</td>
       <td>${row.total}</td>
       <td>${row.amcBmo}</td>
       <td>${row.nec}</td>
@@ -246,7 +460,10 @@ function renderAdmin() {
       <td>${percent(row.correct, row.total)}</td>
       <td>${dateTime(row.lastActive)}</td>
     </tr>
-  `).join("") || '<tr><td colspan="8">暂无学生数据 / No student data</td></tr>';
+  `).join("") || '<tr><td colspan="9">暂无学生数据 / No student data</td></tr>';
+  els.studentRows.querySelectorAll(".role-select").forEach((select) => {
+    select.addEventListener("change", () => updateProfileRole(select.dataset.userId, select.value));
+  });
 
   const recent = attempts.slice().sort((a, b) => String(b.submitted_at || "").localeCompare(String(a.submitted_at || "")));
   els.attemptTableTitle.textContent = `${recent.length} attempts`;
@@ -265,6 +482,18 @@ function renderAdmin() {
       </tr>
     `;
   }).join("") || '<tr><td colspan="8">暂无作答数据 / No attempts</td></tr>';
+
+  els.assignmentTableTitle.textContent = `${state.adminData.assignments.length} assignments`;
+  els.adminAssignmentList.innerHTML = "";
+  if (!state.adminData.assignments.length) {
+    const empty = document.createElement("p");
+    empty.textContent = "还没有发布任务 / No assignments yet.";
+    els.adminAssignmentList.append(empty);
+  } else {
+    state.adminData.assignments.forEach((assignment) => {
+      els.adminAssignmentList.append(renderAssignmentItem(assignment, { showDelete: true }));
+    });
+  }
 }
 
 async function fetchAll(table, select, orderColumn) {
@@ -285,14 +514,19 @@ async function loadAdmin() {
   if (!isAdmin()) return;
   els.adminDashboard.classList.remove("is-hidden");
   els.authMessage.textContent = "正在加载管理员数据... / Loading admin data...";
-  const [profiles, attempts] = await Promise.all([
-    fetchAll("profiles", "id,email,display_name,role,created_at", "created_at"),
-    fetchAll("attempts", "id,user_id,problem_id,contest_type,platform,source_url,exam_id,year,level,form,number,topic,difficulty,selected_answer,correct_answer,is_correct,time_spent_seconds,mode,submitted_at", "submitted_at"),
-  ]);
-  state.adminData = { profiles, attempts };
-  setupAdminFilters();
-  renderAdmin();
-  els.authMessage.textContent = `已加载 ${attempts.length} 条综合作答记录 / Loaded ${attempts.length} combined attempts.`;
+  try {
+    const [profiles, attempts, assignments] = await Promise.all([
+      fetchAll("profiles", "id,email,display_name,role,created_at", "created_at"),
+      fetchAll("attempts", "id,user_id,problem_id,contest_type,platform,source_url,exam_id,year,level,form,number,topic,difficulty,selected_answer,correct_answer,is_correct,time_spent_seconds,mode,submitted_at", "submitted_at"),
+      fetchAll("amc_assignments", "id,created_by,target_role,title,instructions,problem_ids,due_at,created_at", "created_at"),
+    ]);
+    state.adminData = { profiles, attempts, assignments };
+    setupAdminFilters();
+    renderAdmin();
+    els.authMessage.textContent = `已加载 ${attempts.length} 条作答记录与 ${assignments.length} 个 AMC 任务 / Loaded attempts and AMC assignments.`;
+  } catch (error) {
+    els.authMessage.textContent = `管理员数据加载失败 / Failed to load admin data: ${error.message}`;
+  }
 }
 
 function exportCsv() {
@@ -327,6 +561,8 @@ function bindEvents() {
   els.adminCard.addEventListener("click", loadAdmin);
   els.refreshAdmin.addEventListener("click", loadAdmin);
   els.exportCsv.addEventListener("click", exportCsv);
+  els.addAssignmentProblem.addEventListener("click", addAssignmentProblem);
+  els.createAssignment.addEventListener("click", createAssignment);
   [els.contestFilter, els.studentFilter, els.topicFilter, els.yearFilter, els.dateFrom, els.dateTo].forEach((control) => {
     control.addEventListener("change", renderAdmin);
   });
@@ -334,6 +570,7 @@ function bindEvents() {
 
 async function init() {
   bindEvents();
+  setupAssignmentForm();
   const { data } = await state.supabase.auth.getSession();
   await applySession(data.session);
   state.supabase.auth.onAuthStateChange((_event, session) => {
