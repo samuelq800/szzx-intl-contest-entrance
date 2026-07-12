@@ -305,7 +305,8 @@ function renderAssignmentDraft() {
 }
 
 function currentAssignmentProblemId() {
-  return `${els.assignmentYear.value}_AMC_${els.assignmentLevel.value}${els.assignmentForm.value}_${els.assignmentNumber.value}`;
+  const number = String(els.assignmentNumber.value).padStart(2, "0");
+  return `${els.assignmentYear.value}_AMC_${els.assignmentLevel.value}${els.assignmentForm.value}_${number}`;
 }
 
 function setupAssignmentForm() {
