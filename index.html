@@ -182,6 +182,38 @@
           </section>
         </div>
 
+        <div class="assignment-admin-grid">
+          <section class="admin-panel assignment-form-panel">
+            <div class="section-head compact">
+              <div>
+                <span class="section-label">Econ Club Assignment</span>
+                <strong>布置 NEC / LSESU 题目</strong>
+              </div>
+              <span id="econAssignmentDraftCount" class="assignment-count">0 题已选择</span>
+            </div>
+            <div class="assignment-form">
+              <label class="span-two"><span>任务标题 / Title</span><input id="econAssignmentTitle" type="text" maxlength="100" placeholder="例如：本周 LSESU Macro 练习 / This week's LSESU macro practice" /></label>
+              <label><span>截止日期 / Due date</span><input id="econAssignmentDueAt" type="date" /></label>
+              <label><span>竞赛 / Contest</span><select id="econAssignmentContest"><option value="NEC">NEC</option><option value="LSESU">LSESU</option></select></label>
+              <label class="span-two"><span>题目 / Problem</span><select id="econAssignmentProblem"><option value="">加载题库后选择 / Load a bank first</option></select></label>
+              <button id="addEconAssignmentProblem" type="button" class="quiet-button">加入题目 / Add problem</button>
+              <label class="span-two"><span>说明 / Instructions</span><textarea id="econAssignmentInstructions" rows="3" maxlength="800" placeholder="给成员的练习要求或提示 / Optional instructions"></textarea></label>
+            </div>
+            <div id="econAssignmentDraftProblems" class="assignment-problem-pills"></div>
+            <div class="assignment-actions">
+              <button id="createEconAssignment" type="button">发布给 Econ Club / Publish</button>
+              <p id="econAssignmentMessage" class="assignment-message" aria-live="polite"></p>
+            </div>
+          </section>
+          <section class="admin-panel">
+            <div class="section-head compact">
+              <span class="section-label">Published</span>
+              <strong id="econAssignmentTableTitle">0 assignments</strong>
+            </div>
+            <div id="adminEconAssignmentList" class="assignment-list compact-list"></div>
+          </section>
+        </div>
+
         <div class="admin-filters">
           <label><span>竞赛 / Contest</span><select id="contestFilter"></select></label>
           <label><span>学生 / Student</span><select id="studentFilter"></select></label>
@@ -254,6 +286,6 @@
       </section>
     </main>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="./app.js?v=20260712-lsesu-entry1"></script>
+    <script src="./app.js?v=20260712-econ-assignments1"></script>
   </body>
 </html>

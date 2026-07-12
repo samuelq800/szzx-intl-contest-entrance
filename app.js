@@ -55,6 +55,18 @@ const els = {
   assignmentMessage: document.querySelector("#assignmentMessage"),
   assignmentTableTitle: document.querySelector("#assignmentTableTitle"),
   adminAssignmentList: document.querySelector("#adminAssignmentList"),
+  econAssignmentTitle: document.querySelector("#econAssignmentTitle"),
+  econAssignmentDueAt: document.querySelector("#econAssignmentDueAt"),
+  econAssignmentContest: document.querySelector("#econAssignmentContest"),
+  econAssignmentProblem: document.querySelector("#econAssignmentProblem"),
+  addEconAssignmentProblem: document.querySelector("#addEconAssignmentProblem"),
+  econAssignmentDraftCount: document.querySelector("#econAssignmentDraftCount"),
+  econAssignmentDraftProblems: document.querySelector("#econAssignmentDraftProblems"),
+  econAssignmentInstructions: document.querySelector("#econAssignmentInstructions"),
+  createEconAssignment: document.querySelector("#createEconAssignment"),
+  econAssignmentMessage: document.querySelector("#econAssignmentMessage"),
+  econAssignmentTableTitle: document.querySelector("#econAssignmentTableTitle"),
+  adminEconAssignmentList: document.querySelector("#adminEconAssignmentList"),
 };
 
 const state = {
@@ -68,9 +80,11 @@ const state = {
   user: null,
   profile: null,
   authAction: "login",
-  adminData: { profiles: [], attempts: [], assignments: [] },
+  adminData: { profiles: [], attempts: [], assignments: [], econAssignments: [] },
   assignments: [],
   assignmentDraft: [],
+  econAssignmentDraft: [],
+  econBank: [],
 };
 
 function option(select, value, label) {
@@ -106,6 +120,10 @@ function isAdmin() {
 
 function isMathClubMember() {
   return state.profile?.role === "mathclubmembers";
+}
+
+function isEconClubMember() {
+  return state.profile?.role === "econclubmembers";
 }
 
 function displayName(profile = state.profile) {
@@ -191,7 +209,7 @@ async function logout() {
   await state.supabase.auth.signOut();
   state.user = null;
   state.profile = null;
-  state.adminData = { profiles: [], attempts: [], assignments: [] };
+  state.adminData = { profiles: [], attempts: [], assignments: [], econAssignments: [] };
   state.assignments = [];
   renderAuth();
 }
@@ -373,6 +391,136 @@ async function deleteAssignment(assignmentId) {
   loadAdmin();
 }
 
+const econBankUrls = {
+  NEC: "https://samuelq800.github.io/nec-practice-platform/nec_question_bank.json",
+  LSESU: "https://samuelq800.github.io/lsesu-economics-practice-platform/lsesu_question_bank.json",
+};
+
+function econProblemLabel(problem) {
+  const area = problem.section || problem.topic || "Economics";
+  return `${area} #${problem.number} · ${String(problem.statement || "").replace(/\s+/g, " ").slice(0, 70)}`;
+}
+
+function renderEconAssignmentDraft() {
+  els.econAssignmentDraftProblems.innerHTML = "";
+  els.econAssignmentDraftCount.textContent = `${state.econAssignmentDraft.length} 题已选择 / selected`;
+  state.econAssignmentDraft.forEach((problemId) => {
+    const problem = state.econBank.find((item) => item.id === problemId);
+    const pill = document.createElement("span");
+    pill.className = "assignment-pill";
+    pill.append(document.createTextNode(problem ? econProblemLabel(problem) : problemId));
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.textContent = "×";
+    remove.title = "移除 / Remove";
+    remove.addEventListener("click", () => {
+      state.econAssignmentDraft = state.econAssignmentDraft.filter((id) => id !== problemId);
+      renderEconAssignmentDraft();
+    });
+    pill.append(remove);
+    els.econAssignmentDraftProblems.append(pill);
+  });
+}
+
+async function loadEconBank() {
+  const contest = els.econAssignmentContest.value;
+  els.econAssignmentProblem.innerHTML = "<option value=\"\">正在加载题库 / Loading bank...</option>";
+  state.econAssignmentDraft = [];
+  renderEconAssignmentDraft();
+  try {
+    const response = await fetch(econBankUrls[contest]);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const bank = await response.json();
+    state.econBank = (bank.problems || []).slice().sort((a, b) => String(a.section || a.topic || "").localeCompare(String(b.section || b.topic || ""), "zh-CN") || Number(a.number) - Number(b.number));
+    els.econAssignmentProblem.innerHTML = "";
+    option(els.econAssignmentProblem, "", "选择题目 / Problem");
+    state.econBank.forEach((problem) => option(els.econAssignmentProblem, problem.id, econProblemLabel(problem)));
+    els.econAssignmentMessage.textContent = `已载入 ${state.econBank.length} 道 ${contest} 题目 / ${contest} bank loaded.`;
+  } catch (error) {
+    state.econBank = [];
+    els.econAssignmentProblem.innerHTML = "<option value=\"\">题库加载失败 / Bank unavailable</option>";
+    els.econAssignmentMessage.textContent = `无法读取 ${contest} 题库 / Unable to load ${contest} bank: ${error.message}`;
+  }
+}
+
+function addEconAssignmentProblem() {
+  const problemId = els.econAssignmentProblem.value;
+  if (!problemId) return;
+  if (!state.econAssignmentDraft.includes(problemId)) state.econAssignmentDraft.push(problemId);
+  renderEconAssignmentDraft();
+}
+
+function renderEconAssignmentItem(assignment, options = {}) {
+  const item = document.createElement("article");
+  item.className = "assignment-item";
+  const head = document.createElement("div");
+  head.className = "assignment-item-head";
+  const title = document.createElement("h3");
+  title.textContent = assignment.title || `${assignment.contest_type} 练习任务 / Assignment`;
+  const meta = document.createElement("span");
+  meta.className = "assignment-meta";
+  meta.textContent = `${assignment.contest_type} · ${assignmentDate(assignment.due_at)}`;
+  head.append(title, meta);
+  item.append(head);
+  if (assignment.instructions) {
+    const note = document.createElement("p");
+    note.textContent = assignment.instructions;
+    item.append(note);
+  }
+  const problems = document.createElement("p");
+  problems.className = "assignment-problems";
+  problems.textContent = `${assignment.problem_ids?.length || 0} 题 / problems`;
+  item.append(problems);
+  if (options.showDelete) {
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.className = "quiet-button";
+    remove.textContent = "撤回任务 / Remove";
+    remove.addEventListener("click", () => deleteEconAssignment(assignment.id));
+    item.append(remove);
+  }
+  return item;
+}
+
+async function createEconAssignment() {
+  if (!isAdmin()) return;
+  if (!state.econAssignmentDraft.length) {
+    els.econAssignmentMessage.textContent = "请至少加入一道题 / Add at least one problem.";
+    return;
+  }
+  const contest = els.econAssignmentContest.value;
+  const title = els.econAssignmentTitle.value.trim() || `${contest} 练习 · ${new Date().toLocaleDateString("zh-CN")}`;
+  els.createEconAssignment.disabled = true;
+  const { error } = await state.supabase.from("econ_assignments").insert({
+    created_by: state.user.id,
+    target_role: "econclubmembers",
+    contest_type: contest,
+    title,
+    instructions: els.econAssignmentInstructions.value.trim() || null,
+    problem_ids: state.econAssignmentDraft,
+    due_at: els.econAssignmentDueAt.value ? new Date(`${els.econAssignmentDueAt.value}T23:59:59`).toISOString() : null,
+  });
+  els.createEconAssignment.disabled = false;
+  if (error) {
+    els.econAssignmentMessage.textContent = `发布失败 / Failed to publish: ${error.message}`;
+    return;
+  }
+  state.econAssignmentDraft = [];
+  els.econAssignmentTitle.value = "";
+  els.econAssignmentInstructions.value = "";
+  els.econAssignmentDueAt.value = "";
+  els.econAssignmentMessage.textContent = "已发布给 Econ Club 成员 / Published to Econ Club members.";
+  renderEconAssignmentDraft();
+  loadAdmin();
+}
+
+async function deleteEconAssignment(assignmentId) {
+  if (!isAdmin() || !assignmentId) return;
+  const { error } = await state.supabase.from("econ_assignments").delete().eq("id", assignmentId);
+  els.econAssignmentMessage.textContent = error ? `撤回失败 / Failed to remove: ${error.message}` : "任务已撤回 / Assignment removed.";
+  if (!error) loadAdmin();
+}
+
 async function updateProfileRole(userId, role) {
   if (!isAdmin()) return;
   const { error } = await state.supabase.from("profiles").update({ role }).eq("id", userId);
@@ -450,8 +598,9 @@ function renderAdmin() {
       <td>${row.profile.email || "-"}</td>
       <td>${row.profile.role === "admin" ? "admin" : `
         <select class="role-select" data-user-id="${row.profile.id}" aria-label="${displayName(row.profile)} 的身份">
-          <option value="student" ${row.profile.role !== "mathclubmembers" ? "selected" : ""}>student</option>
+          <option value="student" ${!['mathclubmembers', 'econclubmembers'].includes(row.profile.role) ? "selected" : ""}>student</option>
           <option value="mathclubmembers" ${row.profile.role === "mathclubmembers" ? "selected" : ""}>mathclubmembers</option>
+          <option value="econclubmembers" ${row.profile.role === "econclubmembers" ? "selected" : ""}>econclubmembers</option>
         </select>
       `}</td>
       <td>${row.total}</td>
@@ -495,6 +644,18 @@ function renderAdmin() {
       els.adminAssignmentList.append(renderAssignmentItem(assignment, { showDelete: true }));
     });
   }
+
+  els.econAssignmentTableTitle.textContent = `${state.adminData.econAssignments.length} assignments`;
+  els.adminEconAssignmentList.innerHTML = "";
+  if (!state.adminData.econAssignments.length) {
+    const empty = document.createElement("p");
+    empty.textContent = "还没有发布经济社任务 / No Econ Club assignments yet.";
+    els.adminEconAssignmentList.append(empty);
+  } else {
+    state.adminData.econAssignments.forEach((assignment) => {
+      els.adminEconAssignmentList.append(renderEconAssignmentItem(assignment, { showDelete: true }));
+    });
+  }
 }
 
 async function fetchAll(table, select, orderColumn) {
@@ -516,15 +677,16 @@ async function loadAdmin() {
   els.adminDashboard.classList.remove("is-hidden");
   els.authMessage.textContent = "正在加载管理员数据... / Loading admin data...";
   try {
-    const [profiles, attempts, assignments] = await Promise.all([
+    const [profiles, attempts, assignments, econAssignments] = await Promise.all([
       fetchAll("profiles", "id,email,display_name,role,created_at", "created_at"),
       fetchAll("attempts", "id,user_id,problem_id,contest_type,platform,source_url,exam_id,year,level,form,number,topic,difficulty,selected_answer,correct_answer,is_correct,time_spent_seconds,mode,submitted_at", "submitted_at"),
       fetchAll("amc_assignments", "id,created_by,target_role,title,instructions,problem_ids,due_at,created_at", "created_at"),
+      fetchAll("econ_assignments", "id,created_by,target_role,contest_type,title,instructions,problem_ids,due_at,created_at", "created_at"),
     ]);
-    state.adminData = { profiles, attempts, assignments };
+    state.adminData = { profiles, attempts, assignments, econAssignments };
     setupAdminFilters();
     renderAdmin();
-    els.authMessage.textContent = `已加载 ${attempts.length} 条作答记录与 ${assignments.length} 个 AMC 任务 / Loaded attempts and AMC assignments.`;
+    els.authMessage.textContent = `已加载 ${attempts.length} 条作答记录、${assignments.length} 个 AMC 任务和 ${econAssignments.length} 个经济社任务。 / Loaded attempts and assignments.`;
   } catch (error) {
     els.authMessage.textContent = `管理员数据加载失败 / Failed to load admin data: ${error.message}`;
   }
@@ -564,6 +726,9 @@ function bindEvents() {
   els.exportCsv.addEventListener("click", exportCsv);
   els.addAssignmentProblem.addEventListener("click", addAssignmentProblem);
   els.createAssignment.addEventListener("click", createAssignment);
+  els.econAssignmentContest.addEventListener("change", loadEconBank);
+  els.addEconAssignmentProblem.addEventListener("click", addEconAssignmentProblem);
+  els.createEconAssignment.addEventListener("click", createEconAssignment);
   [els.contestFilter, els.studentFilter, els.topicFilter, els.yearFilter, els.dateFrom, els.dateTo].forEach((control) => {
     control.addEventListener("change", renderAdmin);
   });
@@ -572,6 +737,7 @@ function bindEvents() {
 async function init() {
   bindEvents();
   setupAssignmentForm();
+  loadEconBank();
   const { data } = await state.supabase.auth.getSession();
   await applySession(data.session);
   state.supabase.auth.onAuthStateChange((_event, session) => {
