@@ -132,11 +132,11 @@ function renderAuth() {
   if (signedIn) {
     els.userStatus.textContent = `${displayName()} · ${state.profile?.email || state.user.email} · ${state.profile?.role || "student"}`;
     els.authHeading.textContent = "已登录 / Signed in";
-    els.authMessage.textContent = "进入 AMC/BMO 或 NEC 时会继续使用当前 Supabase 会话，云端记录会写入同一个项目。";
+    els.authMessage.textContent = "进入 AMC/BMO、NEC 或 LSESU 时会继续使用当前 Supabase 会话，云端记录会写入同一个项目。";
   } else {
     els.userStatus.textContent = "未登录 / Not signed in";
     els.authHeading.textContent = "统一登录中心";
-    els.authMessage.textContent = "游客可以进入平台，但练习记录只保存在本机。登录后跨 AMC/BMO 与 NEC 共用同一个账号。";
+    els.authMessage.textContent = "游客可以进入平台，但练习记录只保存在本机。登录后跨 AMC/BMO、NEC 与 LSESU 共用同一个账号。";
   }
   els.logoutButton.classList.toggle("is-hidden", !signedIn);
   els.guestActions.classList.toggle("is-hidden", signedIn);
@@ -404,7 +404,7 @@ function filteredAttempts() {
 }
 
 function setupAdminFilters() {
-  fillSelect(els.contestFilter, [["AMC", "AMC"], ["BMO", "BMO"], ["NEC", "NEC"]], "全部竞赛 / All");
+  fillSelect(els.contestFilter, [["AMC", "AMC"], ["BMO", "BMO"], ["NEC", "NEC"], ["LSESU", "LSESU"]], "全部竞赛 / All");
   fillSelect(
     els.studentFilter,
     state.adminData.profiles

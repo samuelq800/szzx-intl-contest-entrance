@@ -348,6 +348,14 @@ h1 {
   background: var(--econ);
 }
 
+.lsesu-card::after {
+  background: var(--gold);
+}
+
+.lsesu-card .card-action {
+  background: var(--econ);
+}
+
 .admin-card {
   width: 100%;
   border: 1px solid rgba(8, 63, 52, 0.13);

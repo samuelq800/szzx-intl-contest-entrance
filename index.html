@@ -6,7 +6,7 @@
     <title>Suzhou High School International Division Competition Platform</title>
     <meta
       name="description"
-      content="Suzhou High School International Division competition practice platform for AMC, BMO, and NEC."
+      content="Suzhou High School International Division competition practice platform for AMC, BMO, NEC, and LSESU."
     />
     <link rel="icon" href="./school-logo.jpg" />
     <link rel="stylesheet" href="./styles.css" />
@@ -47,15 +47,15 @@
                 <span>经济竞赛训练</span>
               </div>
               <div>
-                <strong>Online</strong>
-                <span>在线练习与解析</span>
+                <strong>LSESU</strong>
+                <span>经济学挑战训练</span>
               </div>
             </div>
             <section class="auth-center" aria-label="账号登录 / Account login">
               <div>
                 <span class="section-label">Account Center</span>
                 <h2 id="authHeading">统一登录中心</h2>
-                <p id="authMessage">登录后进入 AMC/BMO 或 NEC 时会自动共享同一个 Supabase 会话。游客模式仍可进入平台，但记录只保存在本机。</p>
+                <p id="authMessage">登录后进入 AMC/BMO、NEC 或 LSESU 时会自动共享同一个 Supabase 会话。游客模式仍可进入平台，但记录只保存在本机。</p>
               </div>
               <div id="guestActions" class="auth-actions">
                 <button id="showLogin" type="button">登录 / Login</button>
@@ -96,11 +96,19 @@
               <span class="card-action">进入 NEC 平台</span>
             </a>
 
-            <button id="adminCard" class="platform-card admin-card is-hidden" type="button">
+            <a class="platform-card lsesu-card" href="https://samuelq800.github.io/lsesu-economics-practice-platform/">
               <span class="card-index">03</span>
+              <span class="card-kicker">Economics Challenge</span>
+              <strong>LSESU Practice</strong>
+              <span class="card-text">LSESU Economics Challenge 分区题库、图示题和分阶段解析。</span>
+              <span class="card-action">进入 LSESU 平台</span>
+            </a>
+
+            <button id="adminCard" class="platform-card admin-card is-hidden" type="button">
+              <span class="card-index">04</span>
               <span class="card-kicker">Administration</span>
               <strong>Admin Dashboard</strong>
-              <span class="card-text">查看 AMC/BMO 与 NEC 的综合学生记录、题目作答和导出数据。</span>
+              <span class="card-text">查看 AMC/BMO、NEC 与 LSESU 的综合学生记录、题目作答和导出数据。</span>
               <span class="card-action">打开管理员面板</span>
             </button>
           </nav>
@@ -241,11 +249,11 @@
           <h2>统一入口，分别训练</h2>
         </div>
         <p>
-          AMC/BMO 与 NEC 保持为独立训练平台，便于学生按竞赛方向进入对应题库，并在各自页面完成筛选、作答和解析查看。
+          AMC/BMO、NEC 与 LSESU 保持为独立训练平台，便于学生按竞赛方向进入对应题库，并在各自页面完成筛选、作答和解析查看。
         </p>
       </section>
     </main>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="./app.js?v=20260708-shared-auth1"></script>
+    <script src="./app.js?v=20260712-lsesu-entry1"></script>
   </body>
 </html>
