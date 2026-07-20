@@ -115,6 +115,50 @@
         </div>
       </section>
 
+      <section id="personalLearning" class="personal-learning is-hidden" aria-label="每日推荐与个人报告 / Daily recommendations and personal report">
+        <div class="section-head">
+          <div>
+            <span class="section-label">Personal Learning</span>
+            <h2>今日推荐与个人能力报告</h2>
+            <p id="recommendationMeta">依据历史作答在浏览器端生成，每日零点更新。</p>
+          </div>
+          <span class="version-chip">Version 39</span>
+        </div>
+
+        <div class="daily-grid">
+          <article class="daily-card math-daily-card">
+            <div class="daily-card-head">
+              <div><span class="section-label">Daily Mathematics</span><h3>推荐数学题</h3></div>
+              <strong id="mathRecommendationLevel">AMC</strong>
+            </div>
+            <div id="mathRecommendationList" class="daily-problem-list"><p>正在生成 / Loading...</p></div>
+            <a id="mathRecommendationLink" class="daily-action" href="https://samuelq800.github.io/amc-practice-platform/?mode=recommended">开始今日 AMC / Start AMC</a>
+          </article>
+
+          <article class="daily-card econ-daily-card">
+            <div class="daily-card-head">
+              <div><span class="section-label">Daily Economics</span><h3>推荐经济题</h3></div>
+              <strong id="economyRecommendationContest">NEC</strong>
+            </div>
+            <div id="economyRecommendationList" class="daily-problem-list"><p>正在生成 / Loading...</p></div>
+            <a id="economyRecommendationLink" class="daily-action" href="https://samuelq800.github.io/nec-practice-platform/?mode=recommended">开始今日经济练习 / Start Economics</a>
+          </article>
+        </div>
+
+        <div class="report-grid">
+          <article class="report-card">
+            <div class="report-head"><div><span class="section-label">Mathematics Profile</span><h3>数学能力</h3></div><strong id="mathOverall">35</strong></div>
+            <canvas id="mathRadar" class="radar-chart" aria-label="数学八维能力图"></canvas>
+            <p id="mathReportSummary" class="report-summary">暂无足够记录 / More practice needed</p>
+          </article>
+          <article class="report-card">
+            <div class="report-head"><div><span class="section-label">Economics Profile</span><h3>经济能力</h3></div><strong id="economyOverall">35</strong></div>
+            <canvas id="economyRadar" class="radar-chart" aria-label="经济八维能力图"></canvas>
+            <p id="economyReportSummary" class="report-summary">暂无足够记录 / More practice needed</p>
+          </article>
+        </div>
+      </section>
+
       <section id="memberAssignments" class="member-assignments is-hidden" aria-label="已布置 AMC 题目 / Assigned AMC problems">
         <div class="section-head">
           <div>
@@ -285,7 +329,9 @@
         </p>
       </section>
     </main>
+    <div class="site-version">Version 39</div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="./app.js?v=20260712-econ-assignments1"></script>
+    <script src="./recommendation-engine.js?v=39"></script>
+    <script src="./app.js?v=39"></script>
   </body>
 </html>

@@ -704,6 +704,141 @@ th {
 .assignment-problems a:hover { background: #dcefe5; }
 .compact-list { max-height: 360px; overflow: auto; }
 
+.personal-learning {
+  margin-top: 22px;
+  padding: clamp(22px, 4vw, 44px);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: 0 18px 50px rgba(8, 63, 52, 0.09);
+}
+
+.personal-learning .section-head > div > p {
+  margin: 6px 0 0;
+  color: var(--ink-soft);
+  font-weight: 760;
+}
+
+.version-chip {
+  padding: 7px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--ink-soft);
+  background: white;
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.site-version {
+  position: fixed;
+  top: 8px;
+  right: 12px;
+  z-index: 50;
+  padding: 5px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--ink-soft);
+  font-size: 11px;
+  font-weight: 850;
+  pointer-events: none;
+}
+
+.daily-grid,
+.report-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 18px;
+}
+
+.daily-card,
+.report-card {
+  padding: 22px;
+  border: 1px solid rgba(8, 63, 52, 0.14);
+  border-radius: 8px;
+  background: white;
+}
+
+.daily-card-head,
+.report-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.daily-card h3,
+.report-card h3 {
+  margin: 5px 0 0;
+  font-size: clamp(22px, 3vw, 32px);
+}
+
+.daily-card-head > strong,
+.report-head > strong {
+  color: var(--math);
+  font-size: 1.25rem;
+}
+
+.econ-daily-card .daily-card-head > strong,
+.report-card:nth-child(2) .report-head > strong {
+  color: var(--econ);
+}
+
+.daily-problem-list {
+  display: grid;
+  gap: 2px;
+  margin: 18px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.daily-problem-row {
+  min-height: 58px;
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(8, 63, 52, 0.08);
+}
+
+.daily-problem-row:last-child { border-bottom: 0; }
+.daily-problem-row > span { color: var(--gold); font-weight: 900; }
+.daily-problem-row strong,
+.daily-problem-row small { display: block; }
+.daily-problem-row small { margin-top: 2px; color: var(--ink-soft); font-weight: 700; }
+
+.daily-action {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 14px;
+  border-radius: 8px;
+  color: white;
+  background: var(--math);
+  font-weight: 900;
+}
+
+.econ-daily-card .daily-action { background: var(--econ); }
+.daily-action:hover { text-decoration: none; filter: brightness(0.92); }
+
+.radar-chart {
+  width: min(100%, 390px);
+  aspect-ratio: 1;
+  display: block;
+  margin: 2px auto 0;
+}
+
+.report-summary {
+  margin: 0;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+  color: var(--ink-soft);
+  font-weight: 760;
+}
+
 @media (max-width: 980px) {
   .hero-grid {
     grid-template-columns: 1fr;
@@ -721,7 +856,9 @@ th {
   .admin-summary,
   .admin-filters,
   .admin-grid,
-  .assignment-admin-grid {
+  .assignment-admin-grid,
+  .daily-grid,
+  .report-grid {
     grid-template-columns: 1fr;
   }
 }
@@ -770,6 +907,10 @@ th {
   .auth-form,
   .detail-band {
     grid-template-columns: 1fr;
+  }
+
+  .personal-learning {
+    padding: 18px;
   }
 
   .quick-stats div {

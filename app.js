@@ -1,5 +1,10 @@
 const SUPABASE_URL = "https://bwlcnaruyjazaxyiiumd.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_bGhQso88Ml6VEpX4reo8QQ_VjwL7yND";
+const BANK_URLS = {
+  AMC: "https://samuelq800.github.io/amc-practice-platform/amc_aops_2010_present.json",
+  NEC: "https://samuelq800.github.io/nec-practice-platform/nec_question_bank.json",
+  LSESU: "https://samuelq800.github.io/lsesu-economics-practice-platform/lsesu_question_bank.json",
+};
 
 // This is a static GitHub Pages frontend. The Supabase publishable/anon key is safe
 // only when RLS policies protect profiles, attempts, and favorites. Never add a
@@ -67,6 +72,20 @@ const els = {
   econAssignmentMessage: document.querySelector("#econAssignmentMessage"),
   econAssignmentTableTitle: document.querySelector("#econAssignmentTableTitle"),
   adminEconAssignmentList: document.querySelector("#adminEconAssignmentList"),
+  personalLearning: document.querySelector("#personalLearning"),
+  recommendationMeta: document.querySelector("#recommendationMeta"),
+  mathRecommendationLevel: document.querySelector("#mathRecommendationLevel"),
+  mathRecommendationList: document.querySelector("#mathRecommendationList"),
+  mathRecommendationLink: document.querySelector("#mathRecommendationLink"),
+  economyRecommendationContest: document.querySelector("#economyRecommendationContest"),
+  economyRecommendationList: document.querySelector("#economyRecommendationList"),
+  economyRecommendationLink: document.querySelector("#economyRecommendationLink"),
+  mathOverall: document.querySelector("#mathOverall"),
+  economyOverall: document.querySelector("#economyOverall"),
+  mathRadar: document.querySelector("#mathRadar"),
+  economyRadar: document.querySelector("#economyRadar"),
+  mathReportSummary: document.querySelector("#mathReportSummary"),
+  economyReportSummary: document.querySelector("#economyReportSummary"),
 };
 
 const state = {
@@ -85,6 +104,8 @@ const state = {
   assignmentDraft: [],
   econAssignmentDraft: [],
   econBank: [],
+  personalAttempts: [],
+  dailyPlan: null,
 };
 
 function option(select, value, label) {
@@ -160,8 +181,110 @@ function renderAuth() {
   els.guestActions.classList.toggle("is-hidden", signedIn);
   els.adminCard.classList.toggle("is-hidden", !isAdmin());
   els.memberAssignments.classList.toggle("is-hidden", !isMathClubMember());
+  els.personalLearning.classList.toggle("is-hidden", !signedIn);
   if (!isAdmin()) els.adminDashboard.classList.add("is-hidden");
   if (isMathClubMember()) loadMemberAssignments();
+}
+
+function recommendationProblemLabel(problem, contestType) {
+  if (contestType === "AMC") return `${problem.year} AMC ${problem.level}${problem.form} #${problem.number}`;
+  if (contestType === "LSESU") return `${problem.section || problem.topic} · #${problem.number}`;
+  return `${problem.topic} · #${problem.number}`;
+}
+
+function renderRecommendationList(target, problems, contestType) {
+  target.innerHTML = "";
+  if (!problems.length) {
+    const empty = document.createElement("p");
+    empty.textContent = "当前题库中没有可推荐的新题 / No eligible problems today.";
+    target.append(empty);
+    return;
+  }
+  problems.forEach((problem, index) => {
+    const row = document.createElement("div");
+    row.className = "daily-problem-row";
+    const number = document.createElement("span");
+    number.textContent = String(index + 1).padStart(2, "0");
+    const copy = document.createElement("div");
+    const title = document.createElement("strong");
+    title.textContent = recommendationProblemLabel(problem, contestType);
+    const reason = document.createElement("small");
+    reason.textContent = problem.recommendation_reason || "能力匹配 / Ability matched";
+    copy.append(title, reason);
+    row.append(number, copy);
+    target.append(row);
+  });
+}
+
+function renderReport(report, type) {
+  const isMath = type === "math";
+  const overall = isMath ? els.mathOverall : els.economyOverall;
+  const summary = isMath ? els.mathReportSummary : els.economyReportSummary;
+  const canvas = isMath ? els.mathRadar : els.economyRadar;
+  overall.textContent = String(report.overall);
+  summary.textContent = report.total
+    ? `已纳入 ${report.total} 道题；当前薄弱项：${report.weakest.label}（${report.weakest.score}）。`
+    : "完成练习后将生成个性化八维报告。 / Complete problems to build your profile.";
+  window.SZZXRecommendations.drawRadar(canvas, report.dimensions, isMath
+    ? { stroke: "#0a6b57", fill: "rgba(10, 107, 87, .22)" }
+    : { stroke: "#24506f", fill: "rgba(36, 80, 111, .2)" });
+}
+
+function recommendationUrl(base, problems) {
+  const params = new URLSearchParams({
+    mode: "recommended",
+    date: window.SZZXRecommendations.dayKey(),
+    problems: problems.map((problem) => problem.id).join(","),
+  });
+  return `${base}?${params.toString()}`;
+}
+
+async function fetchBank(url) {
+  const response = await fetch(url, { cache: "force-cache" });
+  if (!response.ok) throw new Error(`题库读取失败 (${response.status})`);
+  return response.json();
+}
+
+async function loadPersonalLearning() {
+  if (!state.user || !window.SZZXRecommendations) return;
+  els.recommendationMeta.textContent = "正在读取历史记录并生成今日推荐… / Building today's plan...";
+  try {
+    const attemptsResult = await state.supabase
+      .from("attempts")
+      .select("problem_id,contest_type,year,level,form,number,topic,difficulty,is_correct,mode,submitted_at")
+      .eq("user_id", state.user.id)
+      .order("submitted_at", { ascending: true });
+    if (attemptsResult.error) throw attemptsResult.error;
+    state.personalAttempts = attemptsResult.data || [];
+    const [amc, nec, lsesu] = await Promise.all([
+      fetchBank(BANK_URLS.AMC),
+      fetchBank(BANK_URLS.NEC),
+      fetchBank(BANK_URLS.LSESU),
+    ]);
+    state.dailyPlan = window.SZZXRecommendations.buildPlan({
+      userId: state.user.id,
+      attempts: state.personalAttempts,
+      amcProblems: amc.problems || [],
+      necProblems: nec.problems || [],
+      lsesuProblems: lsesu.problems || [],
+    });
+    const plan = state.dailyPlan;
+    els.recommendationMeta.textContent = `${plan.date} · 每日题组按北京时间零点更新，计算在当前浏览器完成。`;
+    els.mathRecommendationLevel.textContent = plan.math.some((problem) => Number(problem.level) === 12) ? "AMC 10 / 12" : "AMC 10";
+    els.economyRecommendationContest.textContent = plan.economyContest;
+    renderRecommendationList(els.mathRecommendationList, plan.math, "AMC");
+    renderRecommendationList(els.economyRecommendationList, plan.economy, plan.economyContest);
+    els.mathRecommendationLink.href = recommendationUrl("https://samuelq800.github.io/amc-practice-platform/", plan.math);
+    const economyBase = plan.economyContest === "LSESU"
+      ? "https://samuelq800.github.io/lsesu-economics-practice-platform/"
+      : "https://samuelq800.github.io/nec-practice-platform/";
+    els.economyRecommendationLink.href = recommendationUrl(economyBase, plan.economy);
+    renderReport(plan.mathReport, "math");
+    renderReport(plan.economyReport, "economy");
+  } catch (error) {
+    els.recommendationMeta.textContent = `个人推荐暂时无法生成 / Recommendations unavailable: ${error.message}`;
+    console.warn("Personal recommendations unavailable:", error);
+  }
 }
 
 function openAuthForm(action) {
@@ -203,6 +326,7 @@ async function applySession(session) {
   state.user = session?.user || null;
   state.profile = state.user ? await loadProfile(state.user) : null;
   renderAuth();
+  if (state.user) await loadPersonalLearning();
 }
 
 async function logout() {
@@ -211,6 +335,8 @@ async function logout() {
   state.profile = null;
   state.adminData = { profiles: [], attempts: [], assignments: [], econAssignments: [] };
   state.assignments = [];
+  state.personalAttempts = [];
+  state.dailyPlan = null;
   renderAuth();
 }
 
@@ -742,6 +868,11 @@ async function init() {
   await applySession(data.session);
   state.supabase.auth.onAuthStateChange((_event, session) => {
     applySession(session);
+  });
+  window.addEventListener("resize", () => {
+    if (!state.dailyPlan) return;
+    renderReport(state.dailyPlan.mathReport, "math");
+    renderReport(state.dailyPlan.economyReport, "economy");
   });
 }
 
