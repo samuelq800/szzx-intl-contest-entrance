@@ -32,8 +32,8 @@ const els = {
   exportCsv: document.querySelector("#exportCsv"),
   totalStudents: document.querySelector("#totalStudents"),
   totalAttempts: document.querySelector("#totalAttempts"),
-  amcBmoAttempts: document.querySelector("#amcBmoAttempts"),
-  necAttempts: document.querySelector("#necAttempts"),
+  mathAttempts: document.querySelector("#mathAttempts"),
+  economyAttempts: document.querySelector("#economyAttempts"),
   averageAccuracy: document.querySelector("#averageAccuracy"),
   activeUsers: document.querySelector("#activeUsers"),
   contestFilter: document.querySelector("#contestFilter"),
@@ -678,7 +678,7 @@ function filteredAttempts() {
 }
 
 function setupAdminFilters() {
-  fillSelect(els.contestFilter, [["AMC", "AMC"], ["BMO", "BMO"], ["NEC", "NEC"], ["LSESU", "LSESU"]], "全部竞赛 / All");
+  fillSelect(els.contestFilter, [["AMC", "AMC"], ["AIME", "AIME"], ["BMO", "BMO"], ["NEC", "NEC"], ["LSESU", "LSESU"]], "全部竞赛 / All");
   fillSelect(
     els.studentFilter,
     state.adminData.profiles
@@ -695,28 +695,45 @@ function setupAdminFilters() {
 function renderAdmin() {
   const attempts = filteredAttempts();
   const correct = attempts.filter((attempt) => attempt.is_correct).length;
-  const amcBmo = attempts.filter((attempt) => attempt.contest_type === "AMC" || attempt.contest_type === "BMO").length;
-  const nec = attempts.filter((attempt) => attempt.contest_type === "NEC").length;
+  const mathAttempts = attempts.filter((attempt) => ["AMC", "AIME", "BMO"].includes(attempt.contest_type)).length;
+  const economyAttempts = attempts.filter((attempt) => ["NEC", "LSESU"].includes(attempt.contest_type)).length;
   const activeSince = Date.now() - 7 * 24 * 60 * 60 * 1000;
   const active = new Set(attempts.filter((attempt) => new Date(attempt.submitted_at).getTime() >= activeSince).map((attempt) => attempt.user_id));
   els.totalStudents.textContent = String(state.adminData.profiles.length);
   els.totalAttempts.textContent = String(attempts.length);
-  els.amcBmoAttempts.textContent = String(amcBmo);
-  els.necAttempts.textContent = String(nec);
+  els.mathAttempts.textContent = String(mathAttempts);
+  els.economyAttempts.textContent = String(economyAttempts);
   els.averageAccuracy.textContent = percent(correct, attempts.length);
   els.activeUsers.textContent = String(active.size);
 
-  const byStudent = new Map(state.adminData.profiles.map((profile) => [profile.id, { profile, total: 0, amcBmo: 0, nec: 0, correct: 0, lastActive: "" }]));
+  const allAttemptsByStudent = new Map();
+  for (const attempt of state.adminData.attempts) {
+    const history = allAttemptsByStudent.get(attempt.user_id) || [];
+    history.push(attempt);
+    allAttemptsByStudent.set(attempt.user_id, history);
+  }
+  const scoresFor = (userId) => {
+    const history = allAttemptsByStudent.get(userId) || [];
+    if (!window.SZZXRecommendations) return { math: 50, economy: 50 };
+    return {
+      math: window.SZZXRecommendations.report(history, "math").overall,
+      economy: window.SZZXRecommendations.report(history, "economy").overall,
+    };
+  };
+  const blankStudent = (profile) => ({ profile, total: 0, mathAttempts: 0, economyAttempts: 0, correct: 0, lastActive: "" });
+  const byStudent = new Map(state.adminData.profiles.map((profile) => [profile.id, blankStudent(profile)]));
   for (const attempt of attempts) {
-    const row = byStudent.get(attempt.user_id) || { profile: profileFor(attempt.user_id), total: 0, amcBmo: 0, nec: 0, correct: 0, lastActive: "" };
+    const row = byStudent.get(attempt.user_id) || blankStudent(profileFor(attempt.user_id));
     row.total += 1;
-    if (attempt.contest_type === "NEC") row.nec += 1;
-    if (attempt.contest_type === "AMC" || attempt.contest_type === "BMO") row.amcBmo += 1;
+    if (["NEC", "LSESU"].includes(attempt.contest_type)) row.economyAttempts += 1;
+    if (["AMC", "AIME", "BMO"].includes(attempt.contest_type)) row.mathAttempts += 1;
     if (attempt.is_correct) row.correct += 1;
     if (String(attempt.submitted_at || "") > String(row.lastActive || "")) row.lastActive = attempt.submitted_at;
     byStudent.set(attempt.user_id, row);
   }
-  const studentRows = [...byStudent.values()].sort((a, b) => b.total - a.total);
+  const studentRows = [...byStudent.entries()]
+    .map(([userId, row]) => ({ ...row, scores: scoresFor(userId) }))
+    .sort((a, b) => b.total - a.total);
   els.studentTableTitle.textContent = `${studentRows.length} students`;
   els.studentRows.innerHTML = studentRows.map((row) => `
     <tr>
@@ -730,13 +747,15 @@ function renderAdmin() {
         </select>
       `}</td>
       <td>${row.total}</td>
-      <td>${row.amcBmo}</td>
-      <td>${row.nec}</td>
+      <td>${row.mathAttempts}</td>
+      <td>${row.economyAttempts}</td>
+      <td><strong>${row.scores.math}</strong></td>
+      <td><strong>${row.scores.economy}</strong></td>
       <td>${row.correct}</td>
       <td>${percent(row.correct, row.total)}</td>
       <td>${dateTime(row.lastActive)}</td>
     </tr>
-  `).join("") || '<tr><td colspan="9">暂无学生数据 / No student data</td></tr>';
+  `).join("") || '<tr><td colspan="11">暂无学生数据 / No student data</td></tr>';
   els.studentRows.querySelectorAll(".role-select").forEach((select) => {
     select.addEventListener("change", () => updateProfileRole(select.dataset.userId, select.value));
   });
