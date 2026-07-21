@@ -99,7 +99,7 @@ const state = {
   user: null,
   profile: null,
   authAction: "login",
-  adminData: { profiles: [], attempts: [], assignments: [], econAssignments: [] },
+  adminData: { profiles: [], attempts: [], bmoSubmissions: [], assignments: [], econAssignments: [] },
   assignments: [],
   assignmentDraft: [],
   econAssignmentDraft: [],
@@ -333,7 +333,7 @@ async function logout() {
   await state.supabase.auth.signOut();
   state.user = null;
   state.profile = null;
-  state.adminData = { profiles: [], attempts: [], assignments: [], econAssignments: [] };
+  state.adminData = { profiles: [], attempts: [], bmoSubmissions: [], assignments: [], econAssignments: [] };
   state.assignments = [];
   state.personalAttempts = [];
   state.dailyPlan = null;
@@ -677,6 +677,25 @@ function filteredAttempts() {
   });
 }
 
+function filteredBmoSubmissions() {
+  const contest = els.contestFilter.value;
+  const student = els.studentFilter.value;
+  const topic = els.topicFilter.value;
+  const year = els.yearFilter.value;
+  const from = els.dateFrom.value ? new Date(`${els.dateFrom.value}T00:00:00`) : null;
+  const to = els.dateTo.value ? new Date(`${els.dateTo.value}T23:59:59`) : null;
+  if (!["all", "BMO"].includes(contest)) return [];
+  return state.adminData.bmoSubmissions.filter((submission) => {
+    if (student !== "all" && submission.user_id !== student) return false;
+    if (topic !== "all" && submission.topic !== topic) return false;
+    if (year !== "all" && String(submission.year || "") !== year) return false;
+    const submitted = submission.submitted_at ? new Date(submission.submitted_at) : null;
+    if (from && submitted && submitted < from) return false;
+    if (to && submitted && submitted > to) return false;
+    return true;
+  });
+}
+
 function setupAdminFilters() {
   fillSelect(els.contestFilter, [["AMC", "AMC"], ["AIME", "AIME"], ["BMO", "BMO"], ["NEC", "NEC"], ["LSESU", "LSESU"]], "全部竞赛 / All");
   fillSelect(
@@ -687,20 +706,22 @@ function setupAdminFilters() {
       .map((profile) => [profile.id, `${displayName(profile)} · ${profile.email || ""}`]),
     "全部学生 / All Students"
   );
-  const unique = (key) => [...new Set(state.adminData.attempts.map((row) => row[key]).filter(Boolean))];
+  const allRecords = [...state.adminData.attempts, ...state.adminData.bmoSubmissions];
+  const unique = (key) => [...new Set(allRecords.map((row) => row[key]).filter(Boolean))];
   fillSelect(els.topicFilter, unique("topic").sort().map((topic) => [topic, topic]), "全部知识点 / All Topics");
   fillSelect(els.yearFilter, unique("year").sort((a, b) => b - a).map((year) => [String(year), String(year)]), "全部年份 / All Years");
 }
 
 function renderAdmin() {
   const attempts = filteredAttempts();
+  const bmoSubmissions = filteredBmoSubmissions();
   const correct = attempts.filter((attempt) => attempt.is_correct).length;
-  const mathAttempts = attempts.filter((attempt) => ["AMC", "AIME", "BMO"].includes(attempt.contest_type)).length;
+  const mathAttempts = attempts.filter((attempt) => ["AMC", "AIME", "BMO"].includes(attempt.contest_type)).length + bmoSubmissions.length;
   const economyAttempts = attempts.filter((attempt) => ["NEC", "LSESU"].includes(attempt.contest_type)).length;
   const activeSince = Date.now() - 7 * 24 * 60 * 60 * 1000;
-  const active = new Set(attempts.filter((attempt) => new Date(attempt.submitted_at).getTime() >= activeSince).map((attempt) => attempt.user_id));
+  const active = new Set([...attempts, ...bmoSubmissions].filter((record) => new Date(record.submitted_at).getTime() >= activeSince).map((record) => record.user_id));
   els.totalStudents.textContent = String(state.adminData.profiles.length);
-  els.totalAttempts.textContent = String(attempts.length);
+  els.totalAttempts.textContent = String(attempts.length + bmoSubmissions.length);
   els.mathAttempts.textContent = String(mathAttempts);
   els.economyAttempts.textContent = String(economyAttempts);
   els.averageAccuracy.textContent = percent(correct, attempts.length);
@@ -720,16 +741,31 @@ function renderAdmin() {
       economy: window.SZZXRecommendations.report(history, "economy").overall,
     };
   };
-  const blankStudent = (profile) => ({ profile, total: 0, mathAttempts: 0, economyAttempts: 0, correct: 0, lastActive: "" });
+  const blankStudent = (profile) => ({ profile, total: 0, amc: 0, aime: 0, bmo: 0, nec: 0, lsesu: 0, bmoScore: 0, bmoGraded: 0, bmoPending: 0, autoAttempts: 0, correct: 0, lastActive: "" });
   const byStudent = new Map(state.adminData.profiles.map((profile) => [profile.id, blankStudent(profile)]));
   for (const attempt of attempts) {
     const row = byStudent.get(attempt.user_id) || blankStudent(profileFor(attempt.user_id));
     row.total += 1;
-    if (["NEC", "LSESU"].includes(attempt.contest_type)) row.economyAttempts += 1;
-    if (["AMC", "AIME", "BMO"].includes(attempt.contest_type)) row.mathAttempts += 1;
+    row.autoAttempts += 1;
+    if (attempt.contest_type === "AMC") row.amc += 1;
+    if (attempt.contest_type === "AIME") row.aime += 1;
+    if (attempt.contest_type === "BMO") row.bmo += 1;
+    if (attempt.contest_type === "NEC") row.nec += 1;
+    if (attempt.contest_type === "LSESU") row.lsesu += 1;
     if (attempt.is_correct) row.correct += 1;
     if (String(attempt.submitted_at || "") > String(row.lastActive || "")) row.lastActive = attempt.submitted_at;
     byStudent.set(attempt.user_id, row);
+  }
+  for (const submission of bmoSubmissions) {
+    const row = byStudent.get(submission.user_id) || blankStudent(profileFor(submission.user_id));
+    row.total += 1;
+    row.bmo += 1;
+    if (submission.review_status === "reviewed" && Number.isFinite(Number(submission.score))) {
+      row.bmoScore += Number(submission.score);
+      row.bmoGraded += 1;
+    } else row.bmoPending += 1;
+    if (String(submission.submitted_at || "") > String(row.lastActive || "")) row.lastActive = submission.submitted_at;
+    byStudent.set(submission.user_id, row);
   }
   const studentRows = [...byStudent.entries()]
     .map(([userId, row]) => ({ ...row, scores: scoresFor(userId) }))
@@ -747,33 +783,46 @@ function renderAdmin() {
         </select>
       `}</td>
       <td>${row.total}</td>
-      <td>${row.mathAttempts}</td>
-      <td>${row.economyAttempts}</td>
+      <td>${row.amc}</td>
+      <td>${row.aime}</td>
+      <td>${row.bmo}</td>
+      <td>${row.nec}</td>
+      <td>${row.lsesu}</td>
       <td><strong>${row.scores.math}</strong></td>
       <td><strong>${row.scores.economy}</strong></td>
+      <td><strong>${row.bmoGraded ? `${row.bmoScore}/${row.bmoGraded * 10}${row.bmoPending ? ` · ${row.bmoPending} 待评` : ""}` : row.bmoPending ? `${row.bmoPending} 待评` : "-"}</strong></td>
       <td>${row.correct}</td>
-      <td>${percent(row.correct, row.total)}</td>
+      <td>${percent(row.correct, row.autoAttempts)}</td>
       <td>${dateTime(row.lastActive)}</td>
     </tr>
-  `).join("") || '<tr><td colspan="11">暂无学生数据 / No student data</td></tr>';
+  `).join("") || '<tr><td colspan="15">暂无学生数据 / No student data</td></tr>';
   els.studentRows.querySelectorAll(".role-select").forEach((select) => {
     select.addEventListener("change", () => updateProfileRole(select.dataset.userId, select.value));
   });
 
-  const recent = attempts.slice().sort((a, b) => String(b.submitted_at || "").localeCompare(String(a.submitted_at || "")));
-  els.attemptTableTitle.textContent = `${recent.length} attempts`;
-  els.attemptRows.innerHTML = recent.slice(0, 500).map((attempt) => {
-    const profile = profileFor(attempt.user_id);
+  const recent = [
+    ...attempts.map((record) => ({ type: "attempt", record })),
+    ...bmoSubmissions.map((record) => ({ type: "bmo", record })),
+  ].sort((a, b) => String(b.record.submitted_at || "").localeCompare(String(a.record.submitted_at || "")));
+  els.attemptTableTitle.textContent = `${recent.length} activities`;
+  els.attemptRows.innerHTML = recent.slice(0, 500).map(({ type, record }) => {
+    const profile = profileFor(record.user_id);
+    if (type === "bmo") return `
+      <tr>
+        <td>${displayName(profile)}</td><td>BMO</td><td>${record.problem_id || "-"}</td><td>${record.topic || "-"}</td>
+        <td>证明解答 / Proof</td><td>${record.review_status === "reviewed" ? `${record.score ?? "-"}/${record.max_score || 10}` : "待评阅 / Pending"}</td>
+        <td>${record.review_status === "reviewed" ? "已评阅 / Reviewed" : "待评阅 / Pending"}</td><td>${dateTime(record.submitted_at)}</td>
+      </tr>`;
     return `
       <tr>
         <td>${displayName(profile)}</td>
-        <td>${attempt.contest_type || "-"}</td>
-        <td>${attempt.problem_id || "-"}</td>
-        <td>${attempt.topic || "-"}</td>
-        <td>${attempt.selected_answer || "-"}</td>
-        <td>${attempt.correct_answer || "-"}</td>
-        <td>${attempt.is_correct ? "正确 / Correct" : "错误 / Wrong"}</td>
-        <td>${dateTime(attempt.submitted_at)}</td>
+        <td>${record.contest_type || "-"}</td>
+        <td>${record.problem_id || "-"}</td>
+        <td>${record.topic || "-"}</td>
+        <td>${record.selected_answer || "-"}</td>
+        <td>${record.correct_answer || "-"}</td>
+        <td>${record.is_correct ? "正确 / Correct" : "错误 / Wrong"}</td>
+        <td>${dateTime(record.submitted_at)}</td>
       </tr>
     `;
   }).join("") || '<tr><td colspan="8">暂无作答数据 / No attempts</td></tr>';
@@ -822,16 +871,17 @@ async function loadAdmin() {
   els.adminDashboard.classList.remove("is-hidden");
   els.authMessage.textContent = "正在加载管理员数据... / Loading admin data...";
   try {
-    const [profiles, attempts, assignments, econAssignments] = await Promise.all([
+    const [profiles, attempts, bmoSubmissions, assignments, econAssignments] = await Promise.all([
       fetchAll("profiles", "id,email,display_name,role,created_at", "created_at"),
       fetchAll("attempts", "id,user_id,problem_id,contest_type,platform,source_url,exam_id,year,level,form,number,topic,difficulty,selected_answer,correct_answer,is_correct,time_spent_seconds,mode,submitted_at", "submitted_at"),
+      fetchAll("bmo_submissions", "id,user_id,problem_id,year,year_label,number,topic,difficulty,response_text,review_status,score,max_score,teacher_feedback,submitted_at,updated_at", "updated_at"),
       fetchAll("amc_assignments", "id,created_by,target_role,title,instructions,problem_ids,due_at,created_at", "created_at"),
       fetchAll("econ_assignments", "id,created_by,target_role,contest_type,title,instructions,problem_ids,due_at,created_at", "created_at"),
     ]);
-    state.adminData = { profiles, attempts, assignments, econAssignments };
+    state.adminData = { profiles, attempts, bmoSubmissions, assignments, econAssignments };
     setupAdminFilters();
     renderAdmin();
-    els.authMessage.textContent = `已加载 ${attempts.length} 条作答记录、${assignments.length} 个 AMC 任务和 ${econAssignments.length} 个经济社任务。 / Loaded attempts and assignments.`;
+    els.authMessage.textContent = `已加载 ${attempts.length} 条自动判分作答、${bmoSubmissions.length} 份 BMO 解答和任务数据。 / Loaded attempts, BMO submissions and assignments.`;
   } catch (error) {
     els.authMessage.textContent = `管理员数据加载失败 / Failed to load admin data: ${error.message}`;
   }
@@ -839,13 +889,18 @@ async function loadAdmin() {
 
 function exportCsv() {
   const rows = filteredAttempts();
-  const headers = ["student_email", "student_name", "contest_type", "problem_id", "topic", "selected_answer", "correct_answer", "is_correct", "platform", "source_url", "submitted_at"];
+  const bmoRows = filteredBmoSubmissions();
+  const headers = ["student_email", "student_name", "contest_type", "problem_id", "topic", "selected_answer_or_response", "correct_answer", "is_correct", "review_status", "score", "max_score", "teacher_feedback", "platform", "source_url", "submitted_at"];
   const cell = (value) => `"${String(value ?? "").replaceAll('"', '""')}"`;
   const csv = [
     headers.join(","),
     ...rows.map((attempt) => {
       const profile = profileFor(attempt.user_id);
-      return [profile.email, displayName(profile), attempt.contest_type, attempt.problem_id, attempt.topic, attempt.selected_answer, attempt.correct_answer, attempt.is_correct, attempt.platform, attempt.source_url, attempt.submitted_at].map(cell).join(",");
+      return [profile.email, displayName(profile), attempt.contest_type, attempt.problem_id, attempt.topic, attempt.selected_answer, attempt.correct_answer, attempt.is_correct, "", "", "", "", attempt.platform, attempt.source_url, attempt.submitted_at].map(cell).join(",");
+    }),
+    ...bmoRows.map((submission) => {
+      const profile = profileFor(submission.user_id);
+      return [profile.email, displayName(profile), "BMO", submission.problem_id, submission.topic, submission.response_text, "", "", submission.review_status, submission.score, submission.max_score, submission.teacher_feedback, "amc-practice-platform", "", submission.submitted_at].map(cell).join(",");
     }),
   ].join("\n");
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });

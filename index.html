@@ -6,7 +6,7 @@
     <title>Suzhou High School International Division Competition Platform</title>
     <meta
       name="description"
-      content="Suzhou High School International Division competition practice platform for AMC, BMO, NEC, and LSESU."
+      content="Suzhou High School International Division competition practice platform for AMC, AIME, BMO, NEC, and LSESU."
     />
     <link rel="icon" href="./school-logo.jpg" />
     <link rel="stylesheet" href="./styles.css" />
@@ -39,7 +39,7 @@
             </p>
             <div class="quick-stats" aria-label="平台内容 / Platform content">
               <div>
-                <strong>AMC / BMO</strong>
+                <strong>AMC / AIME / BMO</strong>
                 <span>数学竞赛训练</span>
               </div>
               <div>
@@ -83,9 +83,9 @@
             <a class="platform-card math-card" href="https://samuelq800.github.io/amc-practice-platform/">
               <span class="card-index">01</span>
               <span class="card-kicker">Mathematics</span>
-              <strong>AMC / BMO Practice</strong>
-              <span class="card-text">AMC 10/12 真题、BMO 训练、单题练习与整卷训练。</span>
-              <span class="card-action">进入 AMC / BMO 平台</span>
+              <strong>AMC / AIME / BMO Practice</strong>
+              <span class="card-text">AMC 10/12 真题与整卷训练、AIME 单题作答、BMO 证明题训练。</span>
+              <span class="card-action">进入数学竞赛平台</span>
             </a>
 
             <a class="platform-card econ-card" href="https://samuelq800.github.io/nec-practice-platform/">
@@ -122,7 +122,7 @@
             <h2>今日推荐与个人能力报告</h2>
             <p id="recommendationMeta">依据历史作答在浏览器端生成，每日零点更新。</p>
           </div>
-          <span class="version-chip">Version 43</span>
+          <span class="version-chip">Version 44</span>
         </div>
 
         <div class="daily-grid">
@@ -281,10 +281,14 @@
                     <th>邮箱 / Email</th>
                     <th>身份 / Role</th>
                     <th>总作答 / Total</th>
-                    <th>数学作答 / Math Attempts</th>
-                    <th>经济作答 / Econ Attempts</th>
+                    <th>AMC</th>
+                    <th>AIME</th>
+                    <th>BMO</th>
+                    <th>NEC</th>
+                    <th>LSESU</th>
                     <th>数学分 / Math Score</th>
                     <th>经济分 / Econ Score</th>
+                    <th>BMO 成绩 / Grade</th>
                     <th>正确 / Correct</th>
                     <th>正确率 / Accuracy</th>
                     <th>最近活跃 / Last Active</th>
@@ -308,9 +312,9 @@
                     <th>竞赛 / Contest</th>
                     <th>题目 / Problem</th>
                     <th>知识点 / Topic</th>
-                    <th>选择 / Selected</th>
-                    <th>正答 / Correct</th>
-                    <th>结果 / Result</th>
+                    <th>作答 / Response</th>
+                    <th>答案或评分 / Answer or Grade</th>
+                    <th>结果或状态 / Result or Status</th>
                     <th>时间 / Submitted</th>
                   </tr>
                 </thead>
@@ -331,9 +335,9 @@
         </p>
       </section>
     </main>
-    <div class="site-version">Version 43</div>
+    <div class="site-version">Version 44</div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="./recommendation-engine.js?v=43"></script>
-    <script src="./app.js?v=43"></script>
+    <script src="./recommendation-engine.js?v=44"></script>
+    <script src="./app.js?v=44"></script>
   </body>
 </html>

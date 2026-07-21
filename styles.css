@@ -644,9 +644,9 @@ th {
 }
 
 .assignment-actions > button {
-  border: 0;
-  background: var(--accent);
-  color: #fff;
+  border: 1px solid var(--accent) !important;
+  background: var(--accent) !important;
+  color: #fff !important;
 }
 
 .assignment-message {
