@@ -1,5 +1,6 @@
 const SUPABASE_URL = "https://bwlcnaruyjazaxyiiumd.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_bGhQso88Ml6VEpX4reo8QQ_VjwL7yND";
+const DATA_MANAGER_ID = "b1b2e25b-3c5c-4a2d-be53-a48e1c7eced4";
 const BANK_URLS = {
   AMC: "https://samuelq800.github.io/amc-practice-platform/amc_aops_2010_present.json",
   NEC: "https://samuelq800.github.io/nec-practice-platform/nec_question_bank.json",
@@ -139,6 +140,10 @@ function isAdmin() {
   return state.profile?.role === "admin";
 }
 
+function canManageData() {
+  return isAdmin() && state.user?.id === DATA_MANAGER_ID;
+}
+
 function isMathClubMember() {
   return state.profile?.role === "mathclubmembers";
 }
@@ -180,6 +185,10 @@ function renderAuth() {
   els.logoutButton.classList.toggle("is-hidden", !signedIn);
   els.guestActions.classList.toggle("is-hidden", signedIn);
   els.adminCard.classList.toggle("is-hidden", !isAdmin());
+  els.exportCsv.classList.toggle("is-hidden", !canManageData());
+  document.querySelectorAll(".assignment-form-panel").forEach((panel) => {
+    panel.classList.toggle("is-hidden", !canManageData());
+  });
   els.memberAssignments.classList.toggle("is-hidden", !isMathClubMember());
   els.personalLearning.classList.toggle("is-hidden", !signedIn);
   if (!isAdmin()) els.adminDashboard.classList.add("is-hidden");
@@ -476,7 +485,7 @@ function addAssignmentProblem() {
 }
 
 async function createAssignment() {
-  if (!isAdmin()) return;
+  if (!canManageData()) return;
   if (!state.assignmentDraft.length) {
     els.assignmentMessage.textContent = "请至少加入一道 AMC 题目 / Add at least one AMC problem.";
     return;
@@ -507,7 +516,7 @@ async function createAssignment() {
 }
 
 async function deleteAssignment(assignmentId) {
-  if (!isAdmin() || !assignmentId) return;
+  if (!canManageData() || !assignmentId) return;
   const { error } = await state.supabase.from("amc_assignments").delete().eq("id", assignmentId);
   if (error) {
     els.assignmentMessage.textContent = `撤回失败 / Failed to remove: ${error.message}`;
@@ -609,7 +618,7 @@ function renderEconAssignmentItem(assignment, options = {}) {
 }
 
 async function createEconAssignment() {
-  if (!isAdmin()) return;
+  if (!canManageData()) return;
   if (!state.econAssignmentDraft.length) {
     els.econAssignmentMessage.textContent = "请至少加入一道题 / Add at least one problem.";
     return;
@@ -641,14 +650,14 @@ async function createEconAssignment() {
 }
 
 async function deleteEconAssignment(assignmentId) {
-  if (!isAdmin() || !assignmentId) return;
+  if (!canManageData() || !assignmentId) return;
   const { error } = await state.supabase.from("econ_assignments").delete().eq("id", assignmentId);
   els.econAssignmentMessage.textContent = error ? `撤回失败 / Failed to remove: ${error.message}` : "任务已撤回 / Assignment removed.";
   if (!error) loadAdmin();
 }
 
 async function updateProfileRole(userId, role) {
-  if (!isAdmin()) return;
+  if (!canManageData()) return;
   const { error } = await state.supabase.from("profiles").update({ role }).eq("id", userId);
   if (error) {
     els.assignmentMessage.textContent = `身份更新失败 / Role update failed: ${error.message}`;
@@ -775,7 +784,7 @@ function renderAdmin() {
     <tr>
       <td>${displayName(row.profile)}</td>
       <td>${row.profile.email || "-"}</td>
-      <td>${row.profile.role === "admin" ? "admin" : `
+      <td>${!canManageData() || row.profile.role === "admin" ? escapeHtml(row.profile.role || "student") : `
         <select class="role-select" data-user-id="${row.profile.id}" aria-label="${displayName(row.profile)} 的身份">
           <option value="student" ${!['mathclubmembers', 'econclubmembers'].includes(row.profile.role) ? "selected" : ""}>student</option>
           <option value="mathclubmembers" ${row.profile.role === "mathclubmembers" ? "selected" : ""}>mathclubmembers</option>
@@ -835,7 +844,7 @@ function renderAdmin() {
     els.adminAssignmentList.append(empty);
   } else {
     state.adminData.assignments.forEach((assignment) => {
-      els.adminAssignmentList.append(renderAssignmentItem(assignment, { showDelete: true }));
+      els.adminAssignmentList.append(renderAssignmentItem(assignment, { showDelete: canManageData() }));
     });
   }
 
@@ -847,7 +856,7 @@ function renderAdmin() {
     els.adminEconAssignmentList.append(empty);
   } else {
     state.adminData.econAssignments.forEach((assignment) => {
-      els.adminEconAssignmentList.append(renderEconAssignmentItem(assignment, { showDelete: true }));
+      els.adminEconAssignmentList.append(renderEconAssignmentItem(assignment, { showDelete: canManageData() }));
     });
   }
 }
@@ -888,6 +897,10 @@ async function loadAdmin() {
 }
 
 function exportCsv() {
+  if (!canManageData()) {
+    els.authMessage.textContent = "当前账号无导出权限 / Export is unavailable for this account.";
+    return;
+  }
   const rows = filteredAttempts();
   const bmoRows = filteredBmoSubmissions();
   const headers = ["student_email", "student_name", "contest_type", "problem_id", "topic", "selected_answer_or_response", "correct_answer", "is_correct", "review_status", "score", "max_score", "teacher_feedback", "platform", "source_url", "submitted_at"];
